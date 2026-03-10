@@ -25,14 +25,14 @@ export function useSidebarResize(options: UseSidebarResizeOptions = {}) {
   })
   const [isDragging, setIsDragging] = useState(false)
 
-  // 使用 ref 存储 width，避免 useCallback 依赖 width
+  // Use ref for width to avoid useCallback dependency
   const widthRef = useRef(width)
   widthRef.current = width
 
-  // 使用 ref 追踪是否正在拖拽，防止重复注册监听器
+  // Track dragging state in ref to prevent duplicate listeners
   const isDraggingRef = useRef(false)
 
-  // 拖拽时禁用 sidebar 的过渡动画
+  // Disable sidebar transition during drag
   useEffect(() => {
     if (isDragging) {
       document.documentElement.setAttribute('data-sidebar-resizing', 'true')
@@ -43,7 +43,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions = {}) {
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent) => {
-      // 防止重复注册监听器
+      // Prevent duplicate listeners
       if (isDraggingRef.current) return
 
       e.preventDefault()
@@ -69,7 +69,7 @@ export function useSidebarResize(options: UseSidebarResizeOptions = {}) {
       const onMouseUp = () => {
         setIsDragging(false)
         isDraggingRef.current = false
-        // 拖拽结束时保存到 localStorage
+        // Save to localStorage on drag end
         localStorage.setItem(storageKey, String(widthRef.current))
         document.removeEventListener('mousemove', onMouseMove)
         document.removeEventListener('mouseup', onMouseUp)

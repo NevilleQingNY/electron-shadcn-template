@@ -9,40 +9,40 @@
  * Color System Guide
  *
  * primary / primary-foreground
- *   CTA、主按钮、最高优先级操作。页面里视觉最重的颜色。
- *   e.g. Save 按钮, 主导航高亮
+ *   CTA, primary buttons, highest priority actions. Strongest visual weight on page.
+ *   e.g. Save button, primary nav highlight
  *
  * secondary / secondary-foreground
- *   次级按钮、辅助操作。和 primary 搭配使用，视觉权重低一档。
- *   e.g. Cancel 按钮, 次级 tab
+ *   Secondary buttons, auxiliary actions. Pairs with primary, one level lower.
+ *   e.g. Cancel button, secondary tab
  *
  * muted / muted-foreground
- *   低优先级信息、placeholder、辅助图标、禁用态文字。
- *   muted-foreground 是"安静的文字/icon"首选色。
- *   e.g. 时间戳, sidebar icon 默认色, 空状态提示
+ *   Low priority info, placeholders, auxiliary icons, disabled text.
+ *   muted-foreground is the go-to color for "quiet" text/icons.
+ *   e.g. timestamps, sidebar icon default, empty state hints
  *
  * accent / accent-foreground
- *   交互反馈背景：hover、active、selected 状态的底色。
- *   不用于文字，只用于表面（bg）。
- *   e.g. 列表 hover 行, sidebar active 项背景
+ *   Interactive feedback background: hover, active, selected states.
+ *   Not for text — only for surfaces (bg).
+ *   e.g. list hover row, sidebar active item background
  *
  * destructive
- *   危险操作：删除、报错。
- *   e.g. Delete 按钮, 错误提示
+ *   Dangerous actions: delete, errors.
+ *   e.g. Delete button, error messages
  *
  * background / foreground
- *   页面底色 / 正文文字。全局基础色，不直接用于组件。
+ *   Page base / body text. Global foundation colors, not used directly in components.
  *
  * card / popover
- *   浮层、卡片表面色。通常和 background 接近但可以微调层级感。
+ *   Overlay and card surfaces. Usually close to background but can differ for depth.
  *
  * border / input / ring
- *   边框、输入框边框、focus ring。结构性颜色，不承载语义。
+ *   Borders, input borders, focus ring. Structural colors, no semantic meaning.
  *
  * sidebar-*
- *   sidebar 专属色系，独立于主色系，可单独调深浅。
- *   sidebar-accent: hover/active 背景
- *   sidebar-primary: sidebar 内的强调色（dark 下可以带色相）
+ *   Sidebar-specific palette, independent of main colors.
+ *   sidebar-accent: hover/active background
+ *   sidebar-primary: emphasis color within sidebar (can have hue in dark mode)
  */
 :root {
   --background: oklch(1 0 0);
@@ -180,18 +180,18 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Inset variant 去掉 p-2，避免 sidebar 内容偏移 */
+  /* Inset variant: remove p-2 to prevent sidebar content offset */
   [data-slot="sidebar-container"] {
     padding: 0 !important;
   }
 
-  /* 拖拽 sidebar 时禁用过渡动画 */
+  /* Disable transitions during sidebar drag */
   html[data-sidebar-resizing="true"] [data-slot="sidebar-gap"],
   html[data-sidebar-resizing="true"] [data-slot="sidebar-container"] {
     transition: none !important;
   }
 
-  /* 拖拽 sidebar 时全局光标 */
+  /* Global cursor during sidebar drag */
   html[data-sidebar-resizing="true"],
   html[data-sidebar-resizing="true"] * {
     cursor: col-resize !important;

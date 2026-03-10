@@ -1,14 +1,14 @@
 # Component Design Patterns: Controlled vs Self-Contained
 
-> 调研日期: 2026-03-04
-> 目的: 为 Item 组件重构（TaskItem / HabitItem / MomentItem）奠定理论基础
+> Research date: 2026-03-04
+> Purpose: Theoretical foundation for Item component refactoring patterns
 
-## 结论
+## Conclusion
 
-给 Item 组件各抽一个 headless hook（`useTaskActions`、`useHabitActions`、`useMomentActions`），把交互逻辑 + API 调用 + 副作用全部内聚到 hook 里。组件消费 hook，父组件只传 `data` + `onMutated`。
+Extract a headless hook for each Item component (`useItemActions`), encapsulating interaction logic + API calls + side effects. Components consume the hook; parent components only pass `data` + `onMutated`.
 
 ```tsx
-// Before: 父组件绑定 8 个 callback（每个使用点重复一遍）
+// Before: parent binds 8 callbacks (repeated at every usage site)
 <HabitItem
   habit={habit}
   todayLog={logMap.get(habit.id)}
@@ -20,127 +20,127 @@
   onUpdate={input => updateHabit(habit.id, input)}
 />
 
-// After: 父组件只关心"数据变了要刷新"
+// After: parent only cares about "data changed, refresh"
 <HabitItem habit={habit} todayLog={logMap.get(habit.id)} todayStr={todayStr} onMutated={reload} />
 ```
 
-核心原因：这些 Item 在所有使用场景（tasks 页、area-detail 页、project-detail 页）的行为完全一致，没有任何理由让父组件重复编排相同的逻辑。
+Core reasoning: these Items behave identically across all usage contexts (tasks page, area-detail page, project-detail page) — there's no reason for parents to repeatedly orchestrate the same logic.
 
 ---
 
-## 一、组件自治光谱
+## 1. Component Autonomy Spectrum
 
-React 官方的 controlled/uncontrolled 是针对表单元素的狭义定义。业务组件需要一个更完整的光谱：
+React's official controlled/uncontrolled is a narrow definition for form elements. Business components need a fuller spectrum:
 
 ```
 Self-Contained → Control Props → Partially Controlled → State Reducer → Headless
-  最易用                                                              最灵活
-  最不灵活                                                            最难用
+  Easiest to use                                                       Most flexible
+  Least flexible                                                       Hardest to use
 ```
 
-选择标准不是"哪个更高级"，而是"当前需要多少灵活性"。
+The choice isn't "which is more advanced" but "how much flexibility do you currently need."
 
-Kent C. Dodds 的核心原则：**从简单（self-contained）开始，有具体需求时再加灵活性。**
+Kent C. Dodds' core principle: **Start simple (self-contained), add flexibility only when there's a concrete need.**
 
 > "You can create a simple convenience API on top of a flexible base pattern without sacrificing flexibility, but reversing this is nearly impossible."
 
-### 各层级定义
+### Level Definitions
 
-**Self-Contained（自治）**: 组件管理自己所有状态和副作用。最易用，最不灵活。适合行为固定的业务实体。
+**Self-Contained**: Component manages all its own state and side effects. Easiest to use, least flexible. Suited for business entities with fixed behavior.
 
-**Control Props（双模式）**: 组件默认自治，但接受 `value` + `onChange` 时交出控制权。Chakra UI、Radix UI、React Aria 都收敛到 `useControllableState` 这个 hook 模式。
+**Control Props (dual mode)**: Component is self-contained by default, but hands over control when given `value` + `onChange`. Chakra UI, Radix UI, and React Aria all converge on the `useControllableState` hook pattern.
 
-**Partially Controlled（选择性控制）**: 复杂组件暴露多个独立的状态切片，每个切片可独立受控或自治。适合树、数据表格等复杂组件。
+**Partially Controlled**: Complex components expose multiple independent state slices, each independently controllable or autonomous. Suited for trees, data tables, and other complex components.
 
-**State Reducer（完全反转控制）**: 消费者可以拦截和修改任何状态转换。内部状态结构成为公开 API。适合高度可复用的库组件（如 downshift）。
+**State Reducer (full inversion of control)**: Consumer can intercept and modify any state transition. Internal state structure becomes public API. Suited for highly reusable library components (e.g., downshift).
 
-**Headless（纯逻辑）**: 纯 hook/context 提供逻辑，不包含任何渲染。完全反转控制。Radix UI、React Aria、Headless UI 用这个模式。
+**Headless (pure logic)**: Pure hook/context providing logic with no rendering. Full inversion of control. Used by Radix UI, React Aria, Headless UI.
 
 ---
 
-## 二、关键原则（来自文献共识）
+## 2. Key Principles (Literature Consensus)
 
-### 1. State Colocation — 状态放在最近使用处
+### 1. State Colocation — Place State Closest to Where It's Used
 
 > "Place code as close to where it's relevant as possible."
 > — Kent C. Dodds, [Colocation](https://kentcdodds.com/blog/colocation)
 
-决策树：
-1. 状态只有一个组件用 → 放那个组件里
-2. 兄弟组件共享 → 提升到共同父级
-3. Prop drilling 严重 → 用 Context，但尽量放在低层级
+Decision tree:
+1. State used by only one component → put it in that component
+2. Shared by siblings → lift to common parent
+3. Severe prop drilling → use Context, but keep it at the lowest possible level
 
-### 2. Hooks 替代 Container/Presentational
+### 2. Hooks Replace Container/Presentational
 
-Dan Abramov 2019 年收回了 Smart/Dumb 组件分类：
+Dan Abramov retracted the Smart/Dumb component split in 2019:
 
 > "Hooks let me do the same thing without an arbitrary division."
 > — Dan Abramov, [Presentational and Container Components (2019 retraction)](https://medium.com/@dan_abramov/smart-and-dumb-components-7ca2f9a7c7d0)
 
-不需要严格区分"容器组件"和"展示组件"。用 hook 分离逻辑，组件本身可以同时持有逻辑和 UI。
+No need to strictly separate "container components" and "presentational components." Use hooks to separate logic; a component can hold both logic and UI.
 
-### 3. Apropcalypse — Prop 爆炸的反模式
+### 3. Apropcalypse — The Prop Explosion Anti-pattern
 
-> 需求来了 → 加一个 prop → 又来需求 → 再加一个 prop → 组件 API 变成 monster
+> New requirement → add a prop → another requirement → add another prop → component API becomes a monster
 > — Kent C. Dodds, [Soul-Crushing Components](https://www.epicreact.dev/soul-crushing-components)
 
-解法有两种（视场景选择）：
-- **库组件**: 用组合替代配置（Compound Components）
-- **业务组件**: 用 headless hook 内聚逻辑
+Two solutions (choose based on context):
+- **Library components**: Use composition over configuration (Compound Components)
+- **Business components**: Use headless hooks to encapsulate logic
 
-### 4. Headless Component — 逻辑与 UI 分离
+### 4. Headless Component — Logic/UI Separation
 
 > "A Headless Component is a design pattern in React where a component — normally implemented as React hooks — is responsible solely for logic and state management without prescribing any specific UI."
 > — Juntao Qiu, [Headless Component (martinfowler.com)](https://martinfowler.com/articles/headless-component.html)
 
-### 5. 不提前抽象
+### 5. Don't Abstract Prematurely
 
 > "The idea isn't necessarily to encourage that every component be implemented this way."
 > — Kent C. Dodds, [Mixing Component Patterns](https://kentcdodds.com/blog/mixing-component-patterns)
 
-只在有具体需求时才加灵活性。业务组件不需要库级别的通用性。
+Only add flexibility when there's a concrete need. Business components don't need library-level generality.
 
 ---
 
-## 三、当前 Codebase 问题诊断
+## 3. Problem Diagnosis
 
-### 现状：责任割裂的 Smart 组件
+### Current State: Split-Responsibility Smart Components
 
-当前 Item 组件（TaskItem、HabitItem、MomentItem）处于尴尬的中间地带：
+Item components (TaskItem, HabitItem, MomentItem) sit in an awkward middle ground:
 
-| 责任 | 归属 |
-|------|------|
-| Display（怎么渲染） | 组件自己 |
-| Interaction（modal 编排） | 组件自己（直接访问 4+ global stores） |
-| Data/Effect（API 调用） | 父组件通过 callbacks 传入 |
+| Responsibility | Owner |
+|---------------|-------|
+| Display (how to render) | Component itself |
+| Interaction (modal orchestration) | Component itself (directly accesses 4+ global stores) |
+| Data/Effect (API calls) | Parent component via callbacks |
 
-组件"知道"怎么交互（编排 modal），但不"拥有"执行权（mutation 交给 callback）。两种模式混用。
+The component "knows" how to interact (orchestrate modals) but doesn't "own" execution (mutations delegated to callbacks). Two patterns mixed together.
 
-### 具体痛点
+### Specific Pain Points
 
-**Prop 爆炸**: HabitItem 接收 8 个 callbacks，TaskItem 接收 7 个。
+**Prop explosion**: HabitItem takes 8 callbacks, TaskItem takes 7.
 
-**重复绑定**: TaskItem 在 3 个地方（tasks.tsx、area-detail.tsx、project-detail-content.tsx）使用，每处写一遍完全相同的 callback 绑定。
+**Repeated binding**: TaskItem is used in 3 places (tasks.tsx, area-detail.tsx, project-detail-content.tsx), each writing identical callback bindings.
 
-**隐式依赖**: 组件直接访问 `usePromptStore`、`useConfirmStore`、`useDatePickerStore`、`usePinnedStore`，但这些依赖在 props 中不可见。
+**Implicit dependencies**: Components directly access `usePromptStore`, `useConfirmStore`, `useDatePickerStore`, `usePinnedStore`, but these dependencies aren't visible in props.
 
 ---
 
-## 四、建议方案：Headless Hook + Self-Contained Item
+## 4. Recommended Pattern: Headless Hook + Self-Contained Item
 
-### 组件分层
+### Component Layering
 
-| 层级 | 模式 | 例子 | 依据 |
-|------|------|------|------|
-| 视觉原语 | Pure Display, 无状态 | TaskCheckbox, HabitCheckbox, ProjectStatusRing | React docs |
-| UI 基础设施 | 非受控 + ref（`defaultValue` + `getValue/setValue`） | TimePicker, DurationPicker, TaskDateTimePicker, RichTextEditor | React uncontrolled pattern（详见第六节） |
-| 业务实体 | Self-Contained + Headless Hook | TaskItem + useTaskActions | state colocation + headless pattern |
-| Detail 视图 | Hook-Driven（现有模式） | TaskDetailContent + useTaskDetail | hooks 替代 container |
-| 页面 | Orchestrator | TasksPage, AreaDetailPage | Bulletproof React |
+| Layer | Pattern | Example | Rationale |
+|-------|---------|---------|-----------|
+| Visual primitive | Pure Display, stateless | TaskCheckbox, HabitCheckbox, ProjectStatusRing | React docs |
+| UI infrastructure | Uncontrolled + ref (`defaultValue` + `getValue/setValue`) | TimePicker, DurationPicker, RichTextEditor | React uncontrolled pattern (see Section 6) |
+| Business entity | Self-Contained + Headless Hook | TaskItem + useTaskActions | State colocation + headless pattern |
+| Detail view | Hook-Driven (existing pattern) | TaskDetailContent + useTaskDetail | Hooks replace containers |
+| Page | Orchestrator | TasksPage, AreaDetailPage | Bulletproof React |
 
-### 具体实现模式
+### Implementation Pattern
 
-#### Headless Hook（逻辑层）
+#### Headless Hook (Logic Layer)
 
 ```tsx
 // features/things/use-task-actions.ts
@@ -176,7 +176,7 @@ function useTaskActions(task: Task, onMutated?: () => void) {
 }
 ```
 
-#### Self-Contained Item（消费 hook）
+#### Self-Contained Item (Consumes Hook)
 
 ```tsx
 // features/things/task-item.tsx
@@ -200,7 +200,7 @@ function TaskItem({ task, onMutated }: { task: Task; onMutated?: () => void }) {
 }
 ```
 
-#### 父组件（极简）
+#### Parent Component (Minimal)
 
 ```tsx
 // routes/tasks.tsx
@@ -209,151 +209,151 @@ function TaskItem({ task, onMutated }: { task: Task; onMutated?: () => void }) {
 ))}
 ```
 
-### 与现有 useTaskDetail 的关系
+### Relationship with useTaskDetail
 
-`useTaskDetail` 已经是一个准 headless hook，模式正确。`useTaskActions` 可以被 `useTaskDetail` 复用，避免重复实现相同的 rename / delete / setDate 逻辑。
-
----
-
-## 五、决策原则速查
-
-1. **默认 self-contained** — 从简单开始（Kent: "start simple"）
-2. **用 hook 分离逻辑** — 不用 container 组件（Dan Abramov 2019）
-3. **状态放在最近使用处** — 只有 TaskItem 用的逻辑就放 TaskItem 里（Kent: state colocation）
-4. **遇到 prop 爆炸，优先内聚逻辑** — 不是拆更多组件（Kent: apropcalypse）
-5. **不提前抽象** — 只在有具体需求时才加灵活性（YAGNI）
-6. **行为一致就该内聚** — 同一行为在所有场景一致 = 属于组件自己（Bulletproof React: colocation）
+`useTaskDetail` is already a quasi-headless hook — the pattern is correct. `useTaskActions` can be reused by `useTaskDetail` to avoid duplicating rename / delete / setDate logic.
 
 ---
 
-## 六、UI 基础设施层 — 非受控复杂输入组件
+## 5. Decision Principles Quick Reference
 
-> 补充日期: 2026-03-05
-> 目的: 记录业务组件四层模型之外的一类重要组件模式
+1. **Default to self-contained** — Start simple (Kent: "start simple")
+2. **Use hooks to separate logic** — Not container components (Dan Abramov 2019)
+3. **Place state closest to where it's used** — Logic only used by TaskItem belongs in TaskItem (Kent: state colocation)
+4. **When facing prop explosion, encapsulate logic first** — Don't split into more components (Kent: apropcalypse)
+5. **Don't abstract prematurely** — Only add flexibility for concrete needs (YAGNI)
+6. **Consistent behavior should be encapsulated** — Same behavior across all contexts = belongs to the component itself (Bulletproof React: colocation)
 
-### 问题：四层模型的盲区
+---
 
-第四节的组件分层（视觉原语 → 业务实体 → Detail 视图 → 页面）覆盖了所有**业务组件**，但遗漏了一类重要组件：**内部状态复杂的输入控件**。
+## 6. UI Infrastructure Layer — Uncontrolled Complex Input Components
 
-这类组件不属于任何业务层级——它们是被业务层消费的 UI 基础设施，类似 `<Input>` / `<Textarea>` 的复杂版本。
+> Supplemented: 2026-03-05
+> Purpose: Document an important component pattern outside the four-layer business model
 
-### 当前实例
+### Problem: Blind Spot in the Four-Layer Model
 
-| 组件 | 内部状态 | ref 接口 | 消费者 |
-|------|---------|---------|--------|
-| `TaskDateTimePicker` | 日期 + 时间 + 时长（组合 3 个子 picker） | `getValue() / setValue()` | `GlobalDatePickerDialog` |
-| `TimePicker` | 时间字符串 + popover + 输入解析 | `getValue() / setValue() / focus()` | `TaskDateTimePicker` |
-| `DurationPicker` | 分钟数 + popover + 自定义输入展开 | `getValue() / setValue() / focus()` | `TaskDateTimePicker` |
-| `RichTextEditor`（待加） | EditorState + 选区 + 历史 + 菜单 | `getValue() / setValue() / focus()` | `TaskDetailContent` 等 |
+Section 4's layering (visual primitive → business entity → detail view → page) covers all **business components**, but misses an important category: **input controls with complex internal state**.
 
-### 模式：非受控 + ref + 可选 onChange 通知
+These components don't belong to any business layer — they're UI infrastructure consumed by business layers, like complex versions of `<Input>` / `<Textarea>`.
+
+### Current Examples
+
+| Component | Internal State | Ref Interface | Consumer |
+|-----------|---------------|---------------|----------|
+| `TaskDateTimePicker` | Date + time + duration (combines 3 sub-pickers) | `getValue() / setValue()` | `GlobalDatePickerDialog` |
+| `TimePicker` | Time string + popover + input parsing | `getValue() / setValue() / focus()` | `TaskDateTimePicker` |
+| `DurationPicker` | Minutes + popover + custom input expansion | `getValue() / setValue() / focus()` | `TaskDateTimePicker` |
+| `RichTextEditor` (future) | EditorState + selection + history + menus | `getValue() / setValue() / focus()` | `TaskDetailContent` etc. |
+
+### Pattern: Uncontrolled + ref + Optional onChange Notification
 
 ```tsx
-// 接口约定
+// Interface contract
 interface ComplexInputProps {
-  defaultValue?: T | null       // 仅用于初始化，不持续同步
-  onChange?: (value: T) => void  // 可选通知回调（不控制组件状态）
-  // ...其他配置 props
+  defaultValue?: T | null       // Only used for initialization, no continuous sync
+  onChange?: (value: T) => void  // Optional notification callback (doesn't control component state)
+  // ...other config props
 }
 
 interface ComplexInputRef {
-  getValue: () => T             // 命令式取当前值
-  setValue: (value: T | null) => void  // 命令式设值
-  focus?: () => void            // 可选
+  getValue: () => T             // Imperative value retrieval
+  setValue: (value: T | null) => void  // Imperative value setting
+  focus?: () => void            // Optional
 }
 ```
 
-关键特征：
+Key characteristics:
 
-1. **`defaultValue` 只读一次** — `useState(defaultValue)` 初始化，无 `useEffect` 同步后续 prop 变化
-2. **`onChange` 是通知，不是控制** — 父组件收到通知后不回写 value，组件继续自治
-3. **`ref.getValue()` 是取值手段** — 父组件在特定时机（Confirm 点击 / debounce / blur）命令式取值
-4. **`forwardRef` + `useImperativeHandle`** — 标准 React 非受控 ref 模式
+1. **`defaultValue` is read once** — `useState(defaultValue)` for initialization, no `useEffect` syncing subsequent prop changes
+2. **`onChange` is notification, not control** — Parent receives notification but doesn't write back value; component stays autonomous
+3. **`ref.getValue()` is the retrieval method** — Parent imperatively gets value at specific moments (Confirm click / debounce / blur)
+4. **`forwardRef` + `useImperativeHandle`** — Standard React uncontrolled ref pattern
 
-### 与受控模式的选择标准
+### Choosing Between Controlled and Uncontrolled
 
-同一领域（日期选择）中两种模式共存：
+Both patterns coexist in the same domain (date selection):
 
-| | `DatePicker`（受控） | `TimePicker` 等（非受控） |
+| | `DatePicker` (controlled) | `TimePicker` etc. (uncontrolled) |
 |---|---|---|
-| 接口 | `value` + `onChange` | `defaultValue` + `ref.getValue()` |
-| 内部状态 | 无（父组件持有 `useState`） | 有（自己管多个 `useState`） |
-| 适用条件 | 状态简单（一个 `Date`） | 状态复杂（解析 + 子组件组合 + popover + 编辑器引擎） |
-| 使用场景 | 表单字段 | 组合选择器、富文本编辑器 |
+| Interface | `value` + `onChange` | `defaultValue` + `ref.getValue()` |
+| Internal state | None (parent holds `useState`) | Yes (manages multiple `useState`) |
+| When to use | Simple state (a single `Date`) | Complex state (parsing + sub-component composition + popover + editor engine) |
+| Use case | Form fields | Composite pickers, rich text editors |
 
-**决策规则**：父组件能用一个 `useState` 管好的 → 受控。内部有复杂交互状态、子组件组合、或第三方引擎（Tiptap/ProseMirror）的 → 非受控 + ref。
+**Decision rule**: Can the parent manage it with a single `useState`? → Controlled. Has complex interaction state, sub-component composition, or third-party engine (Tiptap/ProseMirror)? → Uncontrolled + ref.
 
-### 组合模式
+### Composition Pattern
 
-非受控组件可以嵌套组合，父组件通过 ref 聚合子组件的值：
-
-```
-TaskDateTimePicker (ref: getValue → 聚合下面三个)
-  ├─ Calendar        ← 内部 useState 管日期
-  ├─ TimePicker      ← ref: getValue 返回时间
-  └─ DurationPicker  ← ref: getValue 返回时长
-```
-
-`TaskDateTimePicker.getValue()` 内部调用 `timePickerRef.current?.getValue()` 和 `durationPickerRef.current?.getValue()`，组合成最终的 `TaskDateTimeValue`。
-
-### 与业务层的边界
-
-非受控输入组件**不知道自己在编辑什么**（task? project? document?）。保存时机、保存目标、错误处理全部由消费者（Fat Hook / Dialog）决定：
+Uncontrolled components can nest, with parents aggregating child values via ref:
 
 ```
-Fat Hook (useTaskDetail)          ← 决定何时保存、保存到哪
-    ↓ 消费
-非受控输入 (RichTextEditor)       ← 只管编辑体验，不管持久化
-    ↓ 内部用
-引擎 (Tiptap/ProseMirror)        ← 纯 UI 状态管理
+TaskDateTimePicker (ref: getValue → aggregates the three below)
+  ├─ Calendar        ← internal useState for date
+  ├─ TimePicker      ← ref: getValue returns time
+  └─ DurationPicker  ← ref: getValue returns duration
+```
+
+`TaskDateTimePicker.getValue()` internally calls `timePickerRef.current?.getValue()` and `durationPickerRef.current?.getValue()`, composing the final `TaskDateTimeValue`.
+
+### Boundary with Business Layer
+
+Uncontrolled input components **don't know what they're editing** (task? project? document?). Save timing, save target, and error handling are all decided by the consumer (Fat Hook / Dialog):
+
+```
+Fat Hook (useTaskDetail)          ← Decides when and where to save
+    ↓ consumes
+Uncontrolled Input (RichTextEditor) ← Only manages editing experience, not persistence
+    ↓ uses internally
+Engine (Tiptap/ProseMirror)        ← Pure UI state management
 ```
 
 ---
 
-## 七、页面组合层 — 组合优先，禁止上下文判断
+## 7. Page Composition Layer — Composition Over Context Detection
 
-> 补充日期: 2026-03-10
-> 目的: 解决"万能组件"反模式，明确页面级组件的拆分和组合原则
+> Supplemented: 2026-03-10
+> Purpose: Address the "god component" anti-pattern, clarify page-level component splitting and composition principles
 
-### 问题：万能组件 (God Component)
+### Problem: God Component
 
-第四节的分层覆盖了视觉原语 → 业务实体 → Detail → 页面，但未回答一个关键问题：**当多个页面需要相似但不同的 UI 时，该怎么组织？**
+Section 4's layering covers visual primitive → business entity → detail → page, but doesn't answer a key question: **When multiple pages need similar but different UI, how should you organize it?**
 
-错误做法是创建一个"万能组件"，通过 mode/context props 内部分支：
+The wrong approach is creating a "god component" that branches internally via mode/context props:
 
 ```tsx
-// ❌ 反模式：万能组件
+// ❌ Anti-pattern: god component
 <ContentView
-  areaId={id}           // 模式检测：有 areaId → area 模式
-  dateScope="today"     // 行为开关：决定数据过滤方式
-  showHabitsTab={false} // 布尔开关：切换渲染路径
+  areaId={id}           // Context detection: has areaId → area mode
+  dateScope="today"     // Behavior switch: determines data filtering
+  showHabitsTab={false} // Boolean toggle: switches render path
 />
 ```
 
-此模式的代价：
-- **修改一个页面的行为，需要在共享组件里加 if/else，风险影响所有页面**
-- 产生 adapter hook（存在的唯一目的是桥接组件到不同上下文）
-- 组件内部越来越多的 `if (areaId)` / `if (dateScope)` / `if (showX)`，测试需要覆盖所有组合
+The cost of this pattern:
+- **Modifying one page's behavior requires adding if/else in the shared component, risking all pages**
+- Creates adapter hooks (whose only purpose is bridging the component to different contexts)
+- Growing `if (areaId)` / `if (dateScope)` / `if (showX)` inside the component; tests must cover all combinations
 
-Kent C. Dodds 称之为 **"Soul-Crushing Components"**：
+Kent C. Dodds calls this **"Soul-Crushing Components"**:
 
 > "I need it to do this differently, so I'll accept a new prop for that" leads to nothing but pain and frustration.
 
-### 正确做法：乐高式组合
+### Correct Approach: Lego-Style Composition
 
-页面是 **orchestrator**，自己调 hook 获取数据，组合原子 UI 组件：
+Pages are **orchestrators** — they call hooks for data and compose atomic UI components:
 
 ```tsx
-// ✅ 正确模式：页面组合原子组件
+// ✅ Correct pattern: page composes atomic components
 function AreaDetailPage() {
-  const areaView = useAreaThingsViewStore()    // 页面直接用自己的 store
-  const projects = allProjects.filter(...)     // 页面自己过滤数据
-  const activeGroups = buildFilteredGroups(...) // 页面自己调工具函数
+  const areaView = useAreaThingsViewStore()    // Page uses its own store directly
+  const projects = allProjects.filter(...)     // Page filters data itself
+  const activeGroups = buildFilteredGroups(...) // Page calls utility functions
 
   return (
     <ContentTabs
       filterSlot={
-        <ContentFilterPopover              // 原子组件，纯 props 驱动
+        <ContentFilterPopover              // Atomic component, pure props-driven
           groupBy={areaView.groupBy}
           onGroupByChange={areaView.setGroupBy}
           groupByOptions={AREA_GROUP_OPTIONS}
@@ -361,7 +361,7 @@ function AreaDetailPage() {
         />
       }
       activeContent={
-        <GroupedItemList                    // 原子组件，不知道自己在哪个页面
+        <GroupedItemList                    // Atomic component, doesn't know which page it's in
           groups={activeGroups}
           groupHeaderAction={...}
         />
@@ -371,29 +371,29 @@ function AreaDetailPage() {
 }
 ```
 
-### 四条禁令
+### Four Prohibitions
 
-#### 1. 禁止组件检测自身上下文
+#### 1. Components Must Not Detect Their Own Context
 
-组件不应该知道"我在哪个页面"。如果需要不同行为，由页面通过 props 传入。
+Components shouldn't know "which page am I on." If different behavior is needed, the page passes it via props.
 
 ```tsx
-// ❌ 组件内部检测上下文
+// ❌ Component detects context internally
 function ContentFilterPopover() {
-  const viewState = useContentViewState() // adapter hook 检测 areaId/dateScope
-  if (viewState.hasGroupBy) { ... }       // 内部分支
+  const viewState = useContentViewState() // adapter hook detects areaId/dateScope
+  if (viewState.hasGroupBy) { ... }       // internal branching
 }
 
-// ✅ 页面传入 props，组件不需要知道上下文
+// ✅ Page passes props, component doesn't need to know context
 function ContentFilterPopover({ groupBy, onGroupByChange, ... }: Props) {
-  // 有 groupBy prop → 显示分组区块，没有 → 不显示
-  // 不需要 if/else，props 的有无本身就是配置
+  // Has groupBy prop → show grouping section, doesn't have it → don't show
+  // No if/else needed — presence/absence of props is the configuration
 }
 ```
 
-#### 2. 禁止 adapter hook
+#### 2. No Adapter Hooks
 
-如果一个 hook 的唯一作用是"判断当前在哪个页面，然后返回对应的 store/数据"，它不应该存在。每个页面直接调自己的 store。
+If a hook's sole purpose is "determine which page we're on, then return the corresponding store/data," it shouldn't exist. Each page directly calls its own store.
 
 ```tsx
 // ❌ Adapter hook
@@ -403,15 +403,15 @@ function useContentViewState(areaId?: string, dateScope?: string) {
   return useThingsStore()
 }
 
-// ✅ 页面直接用自己的 store
+// ✅ Page directly uses its own store
 // things.tsx:  const viewStore = useThingsViewStore()
 // today.tsx:   const todayView = useTodayContentViewStore()
 // area.tsx:    const areaView = useAreaThingsViewStore()
 ```
 
-#### 3. 禁止 mode/boolean props 切换行为路径
+#### 3. No mode/boolean Props That Switch Behavior Paths
 
-如果删掉一个 prop 需要删超过几行代码，说明它实际上是两个组件。
+If removing a prop requires deleting more than a few lines of code, it's actually two components.
 
 ```tsx
 // ❌ Mode props
@@ -419,7 +419,7 @@ function useContentViewState(areaId?: string, dateScope?: string) {
 <ContentView mode="today" />
 <List showAreaName={false} showGroupHeaders={true} showReschedule={false} />
 
-// ✅ 各页面组合不同的组件或传不同的 render prop
+// ✅ Each page composes different components or passes different render props
 <GroupedItemList
   groupHeaderAction={group =>
     group.key === 'overdue' ? <Reschedule /> : <PlusButton />
@@ -427,37 +427,37 @@ function useContentViewState(areaId?: string, dateScope?: string) {
 />
 ```
 
-#### 4. 禁止为"减少重复"而合并不同页面的逻辑
+#### 4. Don't Merge Different Pages' Logic to "Reduce Duplication"
 
-多个页面有相似的 10 行数据处理代码，这是**可接受的重复**。提取共享 hook 会重新引入上下文判断。
+Multiple pages having similar 10-line data processing code is **acceptable duplication**. Extracting a shared hook will reintroduce context detection.
 
-> 三行相似代码优于一个过早抽象。
+> Three similar lines of code is better than a premature abstraction.
 
-### 何时提取组件 vs 保留在页面
+### When to Extract Components vs Keep in Page
 
-| 提取为共享组件 | 保留在页面 |
+| Extract as shared component | Keep in page |
 |---|---|
-| 完全相同的视觉元素在 2+ 处使用，props 接口一致 | 只在一个地方使用 |
-| 组件自包含，不需要知道父级上下文 | 需要 mode props 才能在不同上下文工作 |
-| 有清晰、自描述的名字 | 名字需要带 "Multi"/"Universal"/"Shared" |
+| Identical visual element used in 2+ places, same props interface | Only used in one place |
+| Component is self-contained, doesn't need parent context | Needs mode props to work in different contexts |
+| Has a clear, self-describing name | Name needs "Multi"/"Universal"/"Shared" prefix |
 
-### 实际案例：ContentView 拆分
+### Real-World Example: ContentView Decomposition
 
-**Before**: `ContentView` 一个组件服务 Things / Area / Today 三个页面，内部通过 `areaId` / `dateScope` 判断上下文。
+**Before**: `ContentView` — one component serving Things / Area / Today pages, internally detecting context via `areaId` / `dateScope`.
 
-**After**: 拆成三个原子组件 + 页面自己组合：
+**After**: Split into three atomic components + page-level composition:
 
-| 原子组件 | 职责 | 页面如何使用 |
+| Atomic Component | Responsibility | How Pages Use It |
 |---|---|---|
-| `ContentTabs` | Tab shell（Active/Completed/Habits） | 三个页面都用，通过 slot props 传内容 |
-| `GroupedItemList` | 渲染分组列表 | 三个页面传不同的 groups + groupHeaderAction |
-| `ContentFilterPopover` | 筛选弹窗 | Things/Area 传全部 props，Today 只传 importantFilter |
+| `ContentTabs` | Tab shell (Active/Completed/Habits) | All three pages use it, passing content via slot props |
+| `GroupedItemList` | Render grouped lists | Three pages pass different groups + groupHeaderAction |
+| `ContentFilterPopover` | Filter popover | Things/Area pass all props, Today only passes importantFilter |
 
-每个组件都是纯 props 驱动，不知道自己在哪个页面。页面之间的差异（数据过滤、分组方式、显示哪些筛选项）全部在页面层处理。
+Each component is purely props-driven, unaware of which page it's in. Differences between pages (data filtering, grouping, which filter options to show) are all handled at the page layer.
 
 ---
 
-## 参考文献
+## References
 
 - [Sharing State Between Components — React Official](https://react.dev/learn/sharing-state-between-components)
 - [Inversion of Control — Kent C. Dodds](https://kentcdodds.com/blog/inversion-of-control)

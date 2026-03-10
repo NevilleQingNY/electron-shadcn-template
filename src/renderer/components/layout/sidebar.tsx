@@ -1,4 +1,4 @@
-import { Settings, ChevronDown } from 'lucide-react'
+import { Settings } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 import {
@@ -12,13 +12,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from 'renderer/components/ui/sidebar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from 'renderer/components/ui/dropdown-menu'
 import { ThemeToggle } from 'renderer/components/common/theme-toggle'
 import { menuButtonStyles } from 'renderer/components/layout/sidebar-section'
 
@@ -30,41 +23,15 @@ export function AppSidebar() {
   return (
     <Sidebar variant="inset">
       <SidebarHeader
-        className="h-12 shrink-0 flex items-center"
+        className="h-12 shrink-0"
         style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
-      >
-        <div
-          className="pl-18"
-          style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <button className="flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm font-medium hover:bg-sidebar-accent" />
-              }
-            >
-              <span className="flex size-5 items-center justify-center rounded bg-muted text-[10px] font-semibold text-muted-foreground">
-                A
-              </span>
-              <span className="truncate">My App</span>
-              <ChevronDown className="size-3 shrink-0 text-muted-foreground" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-56">
-              <DropdownMenuItem render={<Link to="/settings" />}>
-                Settings
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem disabled>Version 0.1.0</DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      </SidebarHeader>
+      />
 
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
-              {mainItems.map(item => {
+              {mainItems.map((item) => {
                 const isActive = location.pathname === item.url
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -87,7 +54,7 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {coreItems.map(item => {
+                {coreItems.map((item) => {
                   const isActive = location.pathname === item.url
                   return (
                     <SidebarMenuItem key={item.title}>

@@ -1,5 +1,5 @@
 /**
- * 数据库工具函数（Repository 共享）
+ * Database utility functions (shared by repositories)
  */
 
 import type { z } from 'zod'
@@ -13,8 +13,8 @@ export function generateSortOrder(): string {
 }
 
 /**
- * 从 data 中提取 !== undefined 的字段，构建 update 对象
- * undefined = 跳过, null = 清空字段
+ * Extract fields that are !== undefined from data to build update object
+ * undefined = skip, null = clear field
  */
 export function buildUpdates<T extends Record<string, unknown>>(
   data: T
@@ -25,7 +25,7 @@ export function buildUpdates<T extends Record<string, unknown>>(
 }
 
 /**
- * 解析 Zod schema，失败直接 throw
+ * Parse Zod schema, throw on failure
  */
 export function parseOrThrow<T>(schema: z.ZodSchema<T>, data: unknown): T {
   const parsed = schema.safeParse(data)

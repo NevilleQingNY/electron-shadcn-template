@@ -21,7 +21,7 @@ export function SidebarResizeHandle({
       onMouseDown={onMouseDown}
       style={{ left: width - 10 }}
     >
-      {/* 分割线：始终可见，hover/drag 时加粗 */}
+      {/* Divider line: always present, thickens on hover/drag */}
       <div
         className={cn(
           'pointer-events-none absolute left-1/2 top-0 h-full -translate-x-1/2',

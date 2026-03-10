@@ -21,7 +21,7 @@ export async function createMainWindow() {
 
   window.webContents.on('did-finish-load', () => window.show())
 
-  // electron-vite: dev 用 URL，prod 用文件
+  // electron-vite: dev uses URL, prod uses file
   if (
     process.env.NODE_ENV === 'development' &&
     process.env['ELECTRON_RENDERER_URL']

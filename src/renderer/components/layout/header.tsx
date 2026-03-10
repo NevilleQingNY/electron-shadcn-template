@@ -15,7 +15,7 @@ export function MainHeader() {
       className="h-12 shrink-0 flex items-center px-4 relative"
       style={{ WebkitAppRegion: 'drag' } as React.CSSProperties}
     >
-      {/* 左侧：红绿灯占位 + trigger（小屏幕） */}
+      {/* Left: traffic light spacer + trigger (mobile) */}
       <div className="flex items-center shrink-0">
         <div
           className={cn(
@@ -31,7 +31,7 @@ export function MainHeader() {
         </div>
       </div>
 
-      {/* 中间：页面 icon + title */}
+      {/* Center: page icon + title */}
       {currentItem && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
