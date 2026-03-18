@@ -134,8 +134,51 @@ Component                    <- Pure UI (renders + calls methods)
 
 ```
 docs/
+├── features/  # Feature specs as JSON (decisions, tasks, status tracking)
 └── guides/    # Reusable engineering guides (component patterns, etc.)
 ```
+
+### Feature Tracking
+
+每个功能用 `docs/features/<id>.json` 管理，`_index.json` 维护 ID 列表。
+
+**JSON 结构规范：**
+
+```jsonc
+{
+  "id": "feature-id",              // 文件名一致，kebab-case
+  "name": "Feature Name",          // 人可读名称
+  "status": "designing",           // designing → building → done
+  "description": "一句话描述",      // 功能的用户价值
+  "currentState": "...",           // 当前进展快照，供下个 session 快速定位
+  "decisions": ["..."],            // 已确认的设计决策，只增不改（改则追加新决策说明原因）
+  "tasks": [
+    {
+      "task": "任务描述",
+      "done": false,
+      "scope": "完成标准（pending 项必填）"  // 做什么、做到哪算完，一句话
+    }
+  ],
+  "changelog": [
+    {
+      "date": "YYYY-MM-DD",
+      "summary": "做了什么",
+      "details": ["具体改动 1", "具体改动 2"]
+    }
+  ]
+}
+```
+
+**工作流规范：**
+
+| 时机 | 动作 |
+|------|------|
+| 新功能 | 创建 JSON + 加入 `_index.json`，status 设为 `designing` |
+| Session 开始 | 读 JSON，从 `currentState` 定位上下文 |
+| 讨论产出决策 | 追加到 `decisions` |
+| 开始实现 | status 改为 `building`，pending tasks 补齐 `scope` |
+| 完成一批工作 | 标记 `tasks[].done`，追加 `changelog` 条目，更新 `currentState` |
+| 功能全部完成 | status 改为 `done`，`currentState` 写最终状态 |
 
 ## Design Context
 

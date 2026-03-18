@@ -198,6 +198,13 @@
     user-select: none !important;
   }
 
+  /* Global cursor during card resize drag */
+  html[data-card-resizing="true"],
+  html[data-card-resizing="true"] * {
+    cursor: se-resize !important;
+    user-select: none !important;
+  }
+
   /* Scrollbar styling */
   ::-webkit-scrollbar {
     width: 6px;

@@ -23,7 +23,14 @@ export function useScrollFade(fadeSize = DEFAULT_FADE_SIZE) {
     if (!el) return
 
     const update = () => {
-      const { scrollTop, scrollLeft, scrollWidth, scrollHeight, clientWidth, clientHeight } = el
+      const {
+        scrollTop,
+        scrollLeft,
+        scrollWidth,
+        scrollHeight,
+        clientWidth,
+        clientHeight,
+      } = el
       setScrollState({
         canScrollUp: scrollTop > 1,
         canScrollDown: scrollTop + clientHeight < scrollHeight - 1,
@@ -44,7 +51,8 @@ export function useScrollFade(fadeSize = DEFAULT_FADE_SIZE) {
   }, [])
 
   const maskImage = useMemo(() => {
-    const { canScrollUp, canScrollDown, canScrollLeft, canScrollRight } = scrollState
+    const { canScrollUp, canScrollDown, canScrollLeft, canScrollRight } =
+      scrollState
     const hasVerticalFade = canScrollUp || canScrollDown
     const hasHorizontalFade = canScrollLeft || canScrollRight
 
@@ -53,14 +61,20 @@ export function useScrollFade(fadeSize = DEFAULT_FADE_SIZE) {
     const masks: string[] = []
 
     if (hasHorizontalFade) {
-      const left = canScrollLeft ? `transparent, black ${fadeSize}px` : 'black 0%'
-      const right = canScrollRight ? `black calc(100% - ${fadeSize}px), transparent` : 'black 100%'
+      const left = canScrollLeft
+        ? `transparent, black ${fadeSize}px`
+        : 'black 0%'
+      const right = canScrollRight
+        ? `black calc(100% - ${fadeSize}px), transparent`
+        : 'black 100%'
       masks.push(`linear-gradient(to right, ${left}, ${right})`)
     }
 
     if (hasVerticalFade) {
       const top = canScrollUp ? `transparent, black ${fadeSize}px` : 'black 0%'
-      const bottom = canScrollDown ? `black calc(100% - ${fadeSize}px), transparent` : 'black 100%'
+      const bottom = canScrollDown
+        ? `black calc(100% - ${fadeSize}px), transparent`
+        : 'black 100%'
       masks.push(`linear-gradient(to bottom, ${top}, ${bottom})`)
     }
 
@@ -72,5 +86,11 @@ export function useScrollFade(fadeSize = DEFAULT_FADE_SIZE) {
   const maskComposite = maskImage?.includes(', ') ? 'intersect' : undefined
   const webkitMaskComposite = maskComposite ? 'source-in' : undefined
 
-  return { scrollRef, maskImage, maskComposite, webkitMaskComposite, scrollState }
+  return {
+    scrollRef,
+    maskImage,
+    maskComposite,
+    webkitMaskComposite,
+    scrollState,
+  }
 }

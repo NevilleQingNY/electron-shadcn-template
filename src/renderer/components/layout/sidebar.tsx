@@ -31,7 +31,7 @@ export function AppSidebar() {
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu className="gap-0.5">
-              {mainItems.map((item) => {
+              {mainItems.map(item => {
                 const isActive = location.pathname === item.url
                 return (
                   <SidebarMenuItem key={item.title}>
@@ -54,7 +54,7 @@ export function AppSidebar() {
           <SidebarGroup>
             <SidebarGroupContent>
               <SidebarMenu className="gap-0.5">
-                {coreItems.map((item) => {
+                {coreItems.map(item => {
                   const isActive = location.pathname === item.url
                   return (
                     <SidebarMenuItem key={item.title}>
