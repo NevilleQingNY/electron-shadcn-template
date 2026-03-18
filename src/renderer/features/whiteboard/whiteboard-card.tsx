@@ -1,30 +1,25 @@
 import { memo } from 'react'
 import { Pin } from 'lucide-react'
 import { cn } from 'renderer/lib/utils'
+import type { Card } from 'shared/validators'
+import { WhiteboardCardEditor } from './whiteboard-card-editor'
 import {
-  parseCardContent,
   CARD_DEFAULT_WIDTH,
   CARD_DEFAULT_HEIGHT,
 } from './whiteboard-card-utils'
-
-export interface CardData {
-  id: string
-  content: string
-  items?: { text: string; isChecked: boolean }[]
-  x: number // percentage
-  y: number // percentage
-  width?: number // pixels
-  height?: number // pixels
-  zIndex: number
-  isPinned?: boolean
-}
+import { useScrollFade } from './use-scroll-fade'
 
 export const WhiteboardCard = memo(function WhiteboardCard({
   card,
+  isSelected,
+  isEditing,
   onPointerDown,
   onResizePointerDown,
+  onContentCommit,
 }: {
-  card: CardData
+  card: Card
+  isSelected: boolean
+  isEditing: boolean
   onPointerDown: (
     e: React.PointerEvent,
     cardId: string,
@@ -35,59 +30,53 @@ export const WhiteboardCard = memo(function WhiteboardCard({
     cardId: string,
     cardElement: HTMLElement
   ) => void
+  onContentCommit: (cardId: string, content: string) => void
 }) {
-  const { firstLine, restLines } = parseCardContent(card.content)
+  const { scrollRef: cardScrollRef, maskImage, maskComposite, webkitMaskComposite } =
+    useScrollFade(16)
 
   return (
     <div
       className={cn(
         'group/card absolute touch-none select-none rounded-lg bg-card shadow-sm',
         'flex flex-col',
-        'cursor-grab active:cursor-grabbing',
-        'hover:shadow-md'
+        isEditing ? 'cursor-text' : 'cursor-grab active:cursor-grabbing',
+        'hover:shadow-md',
+        isSelected && 'ring-2 ring-primary'
       )}
-      onPointerDown={e => onPointerDown(e, card.id, e.currentTarget)}
+      onPointerDown={e => {
+        if (isEditing) return
+        onPointerDown(e, card.id, e.currentTarget)
+      }}
       style={{
         left: `${card.x}%`,
         top: `${card.y}%`,
-        zIndex: card.zIndex,
+        zIndex: card.z_index,
         width: card.width ?? CARD_DEFAULT_WIDTH,
         height: card.height ?? CARD_DEFAULT_HEIGHT,
       }}
     >
+      {/* Pin indicator */}
+      {card.is_pinned === 1 && (
+        <Pin className="absolute top-2 right-2 size-3 text-muted-foreground" />
+      )}
+
       {/* Scrollable content area */}
-      <div className="flex-1 overflow-y-auto p-3 [scrollbar-width:thin]">
-        <div className="flex items-start justify-between gap-2">
-          <span className="text-sm font-medium leading-tight">{firstLine}</span>
-          {card.isPinned && (
-            <Pin className="size-3 shrink-0 text-muted-foreground" />
-          )}
-        </div>
-
-        {restLines && (
-          <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
-            {restLines}
-          </p>
-        )}
-
-        {card.items && card.items.length > 0 && (
-          <ul className="mt-2 space-y-1">
-            {card.items.map((item, itemIndex) => (
-              <li className="flex items-center gap-1.5 text-xs" key={itemIndex}>
-                <span className={item.isChecked ? 'text-muted-foreground' : ''}>
-                  {item.isChecked ? '☑' : '☐'}
-                </span>
-                <span
-                  className={cn(
-                    item.isChecked && 'text-muted-foreground line-through'
-                  )}
-                >
-                  {item.text}
-                </span>
-              </li>
-            ))}
-          </ul>
-        )}
+      <div
+        className="card-scroll flex-1 overflow-y-auto p-3"
+        ref={cardScrollRef}
+        style={{
+          maskImage,
+          WebkitMaskImage: maskImage,
+          maskComposite,
+          WebkitMaskComposite: webkitMaskComposite,
+        } as React.CSSProperties}
+      >
+        <WhiteboardCardEditor
+          content={card.content}
+          isEditable={isEditing}
+          onCommit={content => onContentCommit(card.id, content)}
+        />
       </div>
 
       {/* Resize handle */}

@@ -1,65 +1,41 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { WhiteboardCard, type CardData } from './whiteboard-card'
+import type { Card } from 'shared/validators'
+import { WhiteboardCard } from './whiteboard-card'
 import { useCardMove } from './use-card-move'
 import { useCardResize } from './use-card-resize'
 import { useScrollFade } from './use-scroll-fade'
 
-const DEMO_CARDS: CardData[] = [
-  {
-    id: '1',
-    content: 'Project A',
-    items: [
-      { text: 'Research', isChecked: true },
-      { text: 'Design', isChecked: false },
-      { text: 'Prototype', isChecked: false },
-    ],
-    isPinned: true,
-    x: 8,
-    y: 10,
-    zIndex: 1,
-  },
-  {
-    id: '2',
-    content:
-      'Feeling good today\nEnergy 8/10. Slept well, morning walk helped.',
-    x: 55,
-    y: 8,
-    zIndex: 2,
-  },
-  {
-    id: '3',
-    content: 'Groceries',
-    items: [
-      { text: 'Milk', isChecked: false },
-      { text: 'Eggs', isChecked: false },
-      { text: 'Coffee beans', isChecked: true },
-    ],
-    x: 30,
-    y: 45,
-    zIndex: 3,
-  },
-  {
-    id: '4',
-    content:
-      'Random thought\nWhat if we rethink the onboarding flow? Current one feels too long. Maybe just drop users straight into a blank board.',
-    x: 60,
-    y: 50,
-    zIndex: 4,
-  },
-]
-
-function buildCardMap(cards: CardData[]): Map<string, CardData> {
-  return new Map(cards.map(card => [card.id, card]))
+function buildCardMap(cardList: Card[]): Map<string, Card> {
+  return new Map(cardList.map(card => [card.id, card]))
 }
+
+const DOUBLE_CLICK_INTERVAL = 300
 
 export function Whiteboard() {
   const boardRef = useRef<HTMLDivElement>(null)
   const { scrollRef, maskImage, maskComposite, webkitMaskComposite } =
     useScrollFade()
-  const [cards, setCards] = useState(() => buildCardMap(DEMO_CARDS))
-  const maxZIndexRef = useRef(DEMO_CARDS.length)
+  const [cards, setCards] = useState<Map<string, Card>>(() => new Map())
+  const maxZIndexRef = useRef(0)
   const cardsRef = useRef(cards)
   cardsRef.current = cards
+
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null)
+  const [editingCardId, setEditingCardId] = useState<string | null>(null)
+  const lastClickRef = useRef<{ cardId: string; time: number } | null>(null)
+  const lastBoardClickRef = useRef<number>(0)
+
+  // Load cards from database on mount
+  useEffect(() => {
+    window.api.card.getAll().then(loadedCards => {
+      setCards(buildCardMap(loadedCards))
+      const maxZ = loadedCards.reduce(
+        (max, card) => Math.max(max, card.z_index),
+        0
+      )
+      maxZIndexRef.current = maxZ
+    }).catch(console.error)
+  }, [])
 
   // Center the scroll on mount
   useEffect(() => {
@@ -78,19 +54,152 @@ export function Whiteboard() {
       const card = prev.get(cardId)
       if (!card) return prev
       const next = new Map(prev)
-      next.set(cardId, { ...card, zIndex: nextZIndex })
+      next.set(cardId, { ...card, z_index: nextZIndex })
       return next
     })
+    window.api.card.update(cardId, { z_index: nextZIndex }).catch(console.error)
   }, [])
 
+  const handleCardClick = useCallback((cardId: string) => {
+    const now = Date.now()
+    const last = lastClickRef.current
+
+    if (
+      last &&
+      last.cardId === cardId &&
+      now - last.time < DOUBLE_CLICK_INTERVAL
+    ) {
+      lastClickRef.current = null
+      setEditingCardId(cardId)
+      setSelectedCardId(cardId)
+      return
+    }
+
+    lastClickRef.current = { cardId, time: now }
+    setSelectedCardId(cardId)
+    setEditingCardId(null)
+  }, [])
+
+  const handleContentCommit = useCallback((cardId: string, content: string) => {
+    setEditingCardId(null)
+    const card = cardsRef.current.get(cardId)
+    if (!card || card.content === content) return
+    setCards(prev => {
+      const prevCard = prev.get(cardId)
+      if (!prevCard) return prev
+      const next = new Map(prev)
+      next.set(cardId, { ...prevCard, content })
+      return next
+    })
+    window.api.card.update(cardId, { content }).catch(console.error)
+  }, [])
+
+  const handlePositionCommit = useCallback(
+    (cardId: string, x: number, y: number) => {
+      window.api.card.update(cardId, { x, y }).catch(console.error)
+    },
+    []
+  )
+
+  const handleSizeCommit = useCallback(
+    (cardId: string, width: number, height: number) => {
+      window.api.card.update(cardId, { width, height }).catch(console.error)
+    },
+    []
+  )
+
+  const handleDeleteCard = useCallback((cardId: string) => {
+    setCards(prev => {
+      const next = new Map(prev)
+      next.delete(cardId)
+      return next
+    })
+    setSelectedCardId(null)
+    window.api.card.delete(cardId).catch(console.error)
+  }, [])
+
+  const handleCreateCard = useCallback(async (x: number, y: number) => {
+    maxZIndexRef.current += 1
+    try {
+      const newCard = await window.api.card.create({
+        content: '',
+        x,
+        y,
+        z_index: maxZIndexRef.current,
+      })
+      setCards(prev => {
+        const next = new Map(prev)
+        next.set(newCard.id, newCard)
+        return next
+      })
+      setSelectedCardId(newCard.id)
+      setEditingCardId(newCard.id)
+    } catch (error) {
+      console.error(error)
+    }
+  }, [])
+
+  // Keyboard handlers
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        if (editingCardId) {
+          // Blur the active editor — triggers onBlur -> onCommit
+          if (document.activeElement instanceof HTMLElement) {
+            document.activeElement.blur()
+          }
+        } else if (selectedCardId) {
+          setSelectedCardId(null)
+        }
+        return
+      }
+
+      // Don't intercept keys when focus is in an input/textarea/contenteditable
+      const target = e.target as HTMLElement
+      const isInputFocused =
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable
+      if (isInputFocused) return
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedCardId) {
+          handleDeleteCard(selectedCardId)
+        }
+        return
+      }
+
+      if (e.key === 'Enter' && selectedCardId && !editingCardId) {
+        e.preventDefault()
+        setEditingCardId(selectedCardId)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedCardId, editingCardId, handleDeleteCard])
+
   const { handleMovePointerDown, handleMovePointerMove, handleMovePointerUp } =
-    useCardMove(boardRef, cardsRef, setCards, bringToFront)
+    useCardMove(
+      boardRef,
+      cardsRef,
+      setCards,
+      bringToFront,
+      handleCardClick,
+      handlePositionCommit
+    )
 
   const {
     handleResizePointerDown,
     handleResizePointerMove,
     handleResizePointerUp,
-  } = useCardResize(boardRef, cardsRef, setCards, bringToFront)
+  } = useCardResize(
+    boardRef,
+    cardsRef,
+    setCards,
+    bringToFront,
+    handleSizeCommit
+  )
 
   // Dispatch: resize takes priority over move
   const handlePointerMove = useCallback(
@@ -109,6 +218,30 @@ export function Whiteboard() {
     [handleResizePointerUp, handleMovePointerUp]
   )
 
+  // Click on blank area deselects; double-click creates card
+  const handleBoardPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.target !== boardRef.current) return
+
+      const now = Date.now()
+      const lastTime = lastBoardClickRef.current
+
+      setSelectedCardId(null)
+      setEditingCardId(null)
+
+      if (now - lastTime < DOUBLE_CLICK_INTERVAL && boardRef.current) {
+        lastBoardClickRef.current = 0
+        const rect = boardRef.current.getBoundingClientRect()
+        const xPercent = ((e.clientX - rect.left) / rect.width) * 100
+        const yPercent = ((e.clientY - rect.top) / rect.height) * 100
+        handleCreateCard(xPercent, yPercent)
+      } else {
+        lastBoardClickRef.current = now
+      }
+    },
+    [handleCreateCard]
+  )
+
   return (
     <div
       className="h-full w-full overflow-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
@@ -124,6 +257,7 @@ export function Whiteboard() {
     >
       <div
         className="relative h-dvh w-screen bg-amber-50 dark:bg-amber-950/20"
+        onPointerDown={handleBoardPointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         ref={boardRef}
@@ -131,7 +265,10 @@ export function Whiteboard() {
         {Array.from(cards.values()).map(card => (
           <WhiteboardCard
             card={card}
+            isEditing={editingCardId === card.id}
+            isSelected={selectedCardId === card.id}
             key={card.id}
+            onContentCommit={handleContentCommit}
             onPointerDown={handleMovePointerDown}
             onResizePointerDown={handleResizePointerDown}
           />

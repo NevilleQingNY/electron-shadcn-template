@@ -11,3 +11,7 @@
 // Example entity
 export { items } from './items'
 export type { Item, NewItem } from './items'
+
+// Whiteboard cards
+export { cards } from './cards'
+export type { Card, NewCard } from './cards'

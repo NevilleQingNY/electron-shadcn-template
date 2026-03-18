@@ -1,5 +1,5 @@
 import { useCallback, useRef, type PointerEvent, type RefObject } from 'react'
-import type { CardData } from './whiteboard-card'
+import type { Card } from 'shared/validators'
 import {
   CARD_DEFAULT_WIDTH,
   CARD_DEFAULT_HEIGHT,
@@ -40,9 +40,10 @@ function clampResizeDelta(
 
 export function useCardResize(
   boardRef: RefObject<HTMLDivElement | null>,
-  cardsRef: RefObject<Map<string, CardData>>,
-  setCards: React.Dispatch<React.SetStateAction<Map<string, CardData>>>,
-  bringToFront: (cardId: string) => void
+  cardsRef: RefObject<Map<string, Card>>,
+  setCards: React.Dispatch<React.SetStateAction<Map<string, Card>>>,
+  bringToFront: (cardId: string) => void,
+  onSizeCommit: (cardId: string, width: number, height: number) => void
 ) {
   const resizeRef = useRef<ResizeInfo | null>(null)
 
@@ -105,11 +106,13 @@ export function useCardResize(
         return next
       })
 
+      onSizeCommit(resize.cardId, width, height)
+
       document.documentElement.removeAttribute('data-card-resizing')
       resizeRef.current = null
       return true
     },
-    [setCards]
+    [setCards, onSizeCommit]
   )
 
   return {

@@ -2,54 +2,47 @@
   "id": "whiteboard-card",
   "name": "Whiteboard Card",
   "status": "building",
-  "description": "卡片作为白板上的核心单元，支持快速记录、拖拽定位、自由缩放、详情展开",
-  "currentState": "尺寸系统和缩放已完成并重构为独立 hook。下一步：click vs drag 区分 + 右侧详情面板",
+  "description": "Cards as core whiteboard units: rich text editing (tiptap), drag positioning, free resize, SQLite persistence, double-click creation",
+  "currentState": "Tiptap rich text editor replaces textarea. SQLite persistence via cards table (Schema -> Repository -> IPC -> Preload). Double-click canvas creates card. BubbleMenu for Bold/Italic/Strike. TaskList extension for checklists. Content stored as tiptap JSON. All card state (content, position, size) persists across app restarts.",
   "decisions": [
-    "卡片无标题字段，单一 content 文本，第一行自动加粗作视觉锚点",
-    "默认尺寸 208×160px，最大 400×320px，默认即最小",
-    "右下角拖拽手柄自由缩放，hover 时显示三点 grip 图标",
-    "内容溢出时卡片内滚动（scrollbar-width:thin），滚轮/触控板滚动，不与拖拽冲突",
-    "拖拽逻辑（useCardMove）与缩放逻辑（useCardResize）分离为独立 hook，Whiteboard 为编排层",
-    "缩放期间全局 cursor: se-resize（data-card-resizing 属性）",
-    "点击打开右侧 Sheet 详情面板 (480px)，面板内可编辑完整内容",
-    "拖拽移动卡片，click vs drag 通过 pointer move 区分",
-    "右键菜单：Open Detail / Edit / Pin / Resize / Duplicate / Delete",
-    "双击白板空白处创建新卡片，光标直接聚焦"
+    "Single content field, first paragraph auto-bold via CSS (.ProseMirror > :first-child)",
+    "Default size 208x160px, max 400x320px, default is minimum",
+    "Bottom-right drag handle for free resize, hover shows 3-dot grip icon",
+    "Content overflow scrolls inside card (scrollbar-width:thin), no conflict with drag",
+    "Drag logic (useCardMove) and resize logic (useCardResize) separated into independent hooks, Whiteboard orchestrates",
+    "Resize sets global cursor: se-resize (data-card-resizing attribute)",
+    "click vs drag distance threshold 5px, isDragged flag set in pointerMove",
+    "Three-layer state: unselected -> selected (ring-2 ring-primary) -> editing (tiptap editable)",
+    "Double-click card enters editing mode, timestamp check two clicks < 300ms = double-click",
+    "Editing mode stopPropagation prevents drag, onBlur auto-saves",
+    "Esc exits editing/deselects, Delete/Backspace deletes selected card, Enter enters editing",
+    "Click whiteboard blank area deselects and exits editing",
+    "Context menu: Open Detail / Edit / Pin / Resize / Duplicate / Delete",
+    "Double-click whiteboard blank area creates new card, cursor auto-focuses",
+    "Tiptap replaces textarea: StarterKit (no heading/codeBlock/blockquote/horizontalRule) + TaskList + TaskItem + Placeholder",
+    "Content stored as tiptap JSON string (JSON.stringify(editor.getJSON())), empty card content = ''",
+    "BubbleMenu from @tiptap/react/menus shows Bold/Italic/Strike toggles when text selected in edit mode",
+    "SQLite cards table: id, content, x, y, width, height, z_index, is_pinned, created_at, is_deleted (soft delete)",
+    "Three-layer architecture: CardRepository -> registerCardHandlers IPC -> window.api.card preload API",
+    "All mutations (content, position, size, delete) persist to SQLite immediately",
+    "Double-click canvas creates card at click position (percentage coords), auto-enters editing mode"
   ],
   "tasks": [
-    { "task": "数据模型重构：title+content 合并为 content", "done": true },
-    { "task": "卡片尺寸约束（默认/最小/最大）", "done": true },
-    { "task": "右下角拖拽缩放", "done": true },
-    { "task": "内容溢出滚动", "done": true },
-    { "task": "拖拽/缩放逻辑重构为独立 hook", "done": true },
-    { "task": "click vs drag 区分", "done": false, "scope": "pointerDown 记录起点，pointerUp 时判断移动距离 < 5px 则视为 click" },
-    { "task": "右侧 Sheet 详情面板", "done": false, "scope": "click 卡片从右侧滑出 480px Sheet，显示完整 content + items，可编辑，Esc/点击外部关闭" },
-    { "task": "右键菜单", "done": false, "scope": "右键卡片弹出 ContextMenu：Open Detail / Edit / Pin / Duplicate / Delete，含快捷键提示" },
-    { "task": "双击空白创建卡片", "done": false, "scope": "双击白板空白区域，在点击位置创建新卡片，自动进入编辑态" },
-    { "task": "卡片 inline 编辑", "done": false, "scope": "双击卡片或右键 Edit 进入编辑态，content 变为 textarea，点击外部或 Esc 保存退出" }
-  ],
-  "changelog": [
-    {
-      "date": "2026-03-19",
-      "summary": "数据模型 + 尺寸系统 + 缩放功能",
-      "details": [
-        "CardData 接口：title+content 合并为单一 content 字段，新增 width/height 可选字段",
-        "新建 whiteboard-card-utils.ts：parseCardContent、clampCardSize、computeResizeBounds 纯函数 + 尺寸常量",
-        "WhiteboardCard 组件：flex-col 布局，内容区 overflow-y-auto，右下角 resize 手柄（group-hover 显示）",
-        "Whiteboard 组件：新增 ResizeInfo + resizeRef，resize/move 互斥分发",
-        "globals.css：新增 data-card-resizing cursor 覆盖",
-        "15 个单元测试覆盖纯函数"
-      ]
-    },
-    {
-      "date": "2026-03-19",
-      "summary": "重构：拖拽/缩放逻辑提取为独立 hook",
-      "details": [
-        "新建 use-card-move.ts：移动逻辑（DragInfo、pointerDown/Move/Up），返回 boolean 表示是否处理",
-        "新建 use-card-resize.ts：缩放逻辑（ResizeInfo、clampResizeDelta 去重 move/commit 的 clamp），返回 boolean",
-        "Whiteboard 从 334 行精简到 125 行，变为纯编排层：hook 组合 + handler 分发 + 渲染",
-        "动机：关注点分离，避免 god component；符合 component-design-patterns.md 的 hook 分离原则"
-      ]
-    }
+    { "task": "Data model: title+content merged to single content field", "done": true },
+    { "task": "Card size constraints (default/min/max)", "done": true },
+    { "task": "Bottom-right drag resize", "done": true },
+    { "task": "Content overflow scrolling", "done": true },
+    { "task": "Drag/resize logic refactored to independent hooks", "done": true },
+    { "task": "Click vs drag differentiation", "done": true },
+    { "task": "Card selected state", "done": true },
+    { "task": "Card inline editing", "done": true },
+    { "task": "Tiptap rich text editor (StarterKit + TaskList + Placeholder)", "done": true },
+    { "task": "BubbleMenu floating toolbar (Bold/Italic/Strike)", "done": true },
+    { "task": "SQLite cards table schema + migration", "done": true },
+    { "task": "CardRepository CRUD + IPC handlers + preload API", "done": true },
+    { "task": "Database persistence for content, position, size, delete", "done": true },
+    { "task": "Double-click canvas to create new card", "done": true },
+    { "task": "Right-side Sheet detail panel", "done": false, "scope": "Click card slides out 480px Sheet from right, shows full content + items, editable, Esc/click outside closes" },
+    { "task": "Context menu", "done": false, "scope": "Right-click card shows ContextMenu: Open Detail / Edit / Pin / Duplicate / Delete, with shortcut hints" }
   ]
 }

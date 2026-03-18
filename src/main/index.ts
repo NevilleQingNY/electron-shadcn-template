@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron'
 
 import { initDatabase, closeDatabase } from './database'
 import { registerItemHandlers } from './ipc/item'
+import { registerCardHandlers } from './ipc/card'
 import { createMainWindow } from './windows/main'
 
 // Single instance lock
@@ -13,7 +14,7 @@ if (!app.requestSingleInstanceLock()) {
 
     // Register IPC handlers
     registerItemHandlers()
-    // TODO: Add your IPC handlers here
+    registerCardHandlers()
 
     await createMainWindow()
 

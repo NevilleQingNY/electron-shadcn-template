@@ -31,11 +31,19 @@ export function useScrollFade(fadeSize = DEFAULT_FADE_SIZE) {
         clientWidth,
         clientHeight,
       } = el
-      setScrollState({
-        canScrollUp: scrollTop > 1,
-        canScrollDown: scrollTop + clientHeight < scrollHeight - 1,
-        canScrollLeft: scrollLeft > 1,
-        canScrollRight: scrollLeft + clientWidth < scrollWidth - 1,
+      setScrollState(prev => {
+        const canScrollUp = scrollTop > 1
+        const canScrollDown = scrollTop + clientHeight < scrollHeight - 1
+        const canScrollLeft = scrollLeft > 1
+        const canScrollRight = scrollLeft + clientWidth < scrollWidth - 1
+        if (
+          prev.canScrollUp === canScrollUp &&
+          prev.canScrollDown === canScrollDown &&
+          prev.canScrollLeft === canScrollLeft &&
+          prev.canScrollRight === canScrollRight
+        )
+          return prev
+        return { canScrollUp, canScrollDown, canScrollLeft, canScrollRight }
       })
     }
 
@@ -43,6 +51,10 @@ export function useScrollFade(fadeSize = DEFAULT_FADE_SIZE) {
     el.addEventListener('scroll', update, { passive: true })
     const ro = new ResizeObserver(update)
     ro.observe(el)
+    const contentEl = el.firstElementChild
+    if (contentEl) {
+      ro.observe(contentEl)
+    }
 
     return () => {
       el.removeEventListener('scroll', update)

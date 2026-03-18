@@ -1,5 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { Item, CreateItemInput, UpdateItemInput } from 'shared/validators'
+import type {
+  Item,
+  CreateItemInput,
+  UpdateItemInput,
+  Card,
+  CreateCardInput,
+  UpdateCardInput,
+} from 'shared/validators'
 
 declare global {
   interface Window {
@@ -21,7 +28,16 @@ const API = {
       ipcRenderer.invoke('item:delete', id),
   },
 
-  // TODO: Add your API namespaces here
+  // ==================== Card ====================
+  card: {
+    getAll: (): Promise<Card[]> => ipcRenderer.invoke('card:getAll'),
+    create: (input: CreateCardInput): Promise<Card> =>
+      ipcRenderer.invoke('card:create', input),
+    update: (id: string, input: UpdateCardInput): Promise<Card | null> =>
+      ipcRenderer.invoke('card:update', id, input),
+    delete: (id: string): Promise<boolean> =>
+      ipcRenderer.invoke('card:delete', id),
+  },
 }
 
 contextBridge.exposeInMainWorld('api', API)

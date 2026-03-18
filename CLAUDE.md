@@ -158,13 +158,6 @@ docs/
       "done": false,
       "scope": "完成标准（pending 项必填）"  // 做什么、做到哪算完，一句话
     }
-  ],
-  "changelog": [
-    {
-      "date": "YYYY-MM-DD",
-      "summary": "做了什么",
-      "details": ["具体改动 1", "具体改动 2"]
-    }
   ]
 }
 ```
@@ -177,7 +170,7 @@ docs/
 | Session 开始 | 读 JSON，从 `currentState` 定位上下文 |
 | 讨论产出决策 | 追加到 `decisions` |
 | 开始实现 | status 改为 `building`，pending tasks 补齐 `scope` |
-| 完成一批工作 | 标记 `tasks[].done`，追加 `changelog` 条目，更新 `currentState` |
+| 完成一批工作 | 标记 `tasks[].done`，更新 `currentState` |
 | 功能全部完成 | status 改为 `done`，`currentState` 写最终状态 |
 
 ## Design Context

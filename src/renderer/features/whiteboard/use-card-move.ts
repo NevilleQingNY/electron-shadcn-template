@@ -1,5 +1,7 @@
 import { useCallback, useRef, type PointerEvent, type RefObject } from 'react'
-import type { CardData } from './whiteboard-card'
+import type { Card } from 'shared/validators'
+
+const CLICK_THRESHOLD = 5
 
 interface DragInfo {
   cardId: string
@@ -12,13 +14,16 @@ interface DragInfo {
   maxDeltaX: number
   minDeltaY: number
   maxDeltaY: number
+  isDragged: boolean
 }
 
 export function useCardMove(
   boardRef: RefObject<HTMLDivElement | null>,
-  cardsRef: RefObject<Map<string, CardData>>,
-  setCards: React.Dispatch<React.SetStateAction<Map<string, CardData>>>,
-  bringToFront: (cardId: string) => void
+  cardsRef: RefObject<Map<string, Card>>,
+  setCards: React.Dispatch<React.SetStateAction<Map<string, Card>>>,
+  bringToFront: (cardId: string) => void,
+  onCardClick: (cardId: string) => void,
+  onPositionCommit: (cardId: string, x: number, y: number) => void
 ) {
   const dragRef = useRef<DragInfo | null>(null)
 
@@ -49,6 +54,7 @@ export function useCardMove(
         maxDeltaX: boardWidth - cardWidth - startPxX,
         minDeltaY: -startPxY,
         maxDeltaY: boardHeight - cardHeight - startPxY,
+        isDragged: false,
       }
 
       element.style.willChange = 'transform'
@@ -60,6 +66,14 @@ export function useCardMove(
   const handleMovePointerMove = useCallback((e: React.PointerEvent) => {
     const drag = dragRef.current
     if (!drag) return false
+
+    if (!drag.isDragged) {
+      const dx = e.clientX - drag.startPointerX
+      const dy = e.clientY - drag.startPointerY
+      if (Math.abs(dx) < CLICK_THRESHOLD && Math.abs(dy) < CLICK_THRESHOLD)
+        return true
+      drag.isDragged = true
+    }
 
     const deltaX = Math.max(
       drag.minDeltaX,
@@ -77,6 +91,17 @@ export function useCardMove(
     (e: React.PointerEvent) => {
       const drag = dragRef.current
       if (!drag || !boardRef.current) return false
+
+      drag.element.style.transform = ''
+      drag.element.style.willChange = ''
+
+      // Click detected — not a drag
+      if (!drag.isDragged) {
+        const cardId = drag.cardId
+        dragRef.current = null
+        onCardClick(cardId)
+        return true
+      }
 
       const boardWidth = boardRef.current.offsetWidth
       const boardHeight = boardRef.current.offsetHeight
@@ -100,9 +125,6 @@ export function useCardMove(
         Math.min(maxYPercent, drag.startCardY + deltaYPercent)
       )
 
-      drag.element.style.transform = ''
-      drag.element.style.willChange = ''
-
       setCards(prev => {
         const card = prev.get(drag.cardId)
         if (!card) return prev
@@ -111,10 +133,12 @@ export function useCardMove(
         return next
       })
 
+      onPositionCommit(drag.cardId, finalX, finalY)
+
       dragRef.current = null
       return true
     },
-    [boardRef, setCards]
+    [boardRef, setCards, onCardClick, onPositionCommit]
   )
 
   return { handleMovePointerDown, handleMovePointerMove, handleMovePointerUp }
