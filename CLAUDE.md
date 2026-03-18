@@ -136,3 +136,27 @@ Component                    <- Pure UI (renders + calls methods)
 docs/
 └── guides/    # Reusable engineering guides (component patterns, etc.)
 ```
+
+## Design Context
+
+### Users
+People with scattered attention who need a frictionless place to dump thoughts and tasks daily. They open the app at the start of their day, jot things down, drag them where they feel right, and move on. They don't want to manage — they want to do.
+
+### Brand Personality
+**Elegant, Calm, Effortless** — Quiet confidence. Like a well-made notebook — says nothing, invites everything. The user should feel relief and clarity, not anxiety about unfinished items.
+
+### Aesthetic Direction
+- **Visual tone**: Refined minimalism with warmth. Things 3-level polish — every pixel intentional, nothing decorative for decoration's sake.
+- **Reference**: Things 3 (spacing, restraint, subtle depth, premium feel)
+- **Anti-references**: Jira/Asana (overwhelming complexity), Todoist (rigid list structure). Never feel like a "productivity tool" — feel like a piece of paper.
+- **Theme**: Light + dark. Grayscale foundation with subtle warm accents (amber/sand) for interactive elements.
+- **Typography**: Geist Sans. Use weight and size for hierarchy, not color or decoration.
+- **Spacing**: Generous. White space is a feature.
+- **Motion**: Subtle, purposeful. Cards feel physical — smooth drags, gentle snaps. No bouncy or flashy.
+
+### Design Principles
+1. **Invisible interface** — Chrome recedes, content dominates. If you can remove it without losing function, remove it.
+2. **Warmth through restraint** — Warm accents sparingly (amber active states, sand hovers). Never saturated, never competing with content.
+3. **Physical metaphor** — Cards are real objects on a desk with weight, movement, and space. The whiteboard is a surface, not a list.
+4. **Respect for time** — Each day is finite. Bounded canvas, not infinite scroll.
+5. **Premium in the details** — Micro-interactions define the brand: how cards appear, settle after drag, how checkboxes feel.

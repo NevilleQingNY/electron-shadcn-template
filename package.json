@@ -1,7 +1,7 @@
 {
-  "displayName": "My App",
-  "name": "my-electron-app",
-  "description": "Electron + React + shadcn template",
+  "displayName": "BetterDay",
+  "name": "better-day",
+  "description": "Every day a clean sheet of paper",
   "version": "0.0.0",
   "main": "./node_modules/.dev/main/index.mjs",
   "resources": "src/resources",
@@ -33,7 +33,7 @@
     "test": "cross-env ELECTRON_RUN_AS_NODE=1 pnpm exec electron ./node_modules/vitest/vitest.mjs",
     "test:watch": "cross-env ELECTRON_RUN_AS_NODE=1 pnpm exec electron ./node_modules/vitest/vitest.mjs --watch",
     "db:generate": "rimraf drizzle/ && drizzle-kit generate --name=init",
-    "db:reset": "rimraf ~/Library/Application\\ Support/my-electron-app/app.db* && rimraf ./node_modules/.dev && echo 'Database reset, run pnpm dev'"
+    "db:reset": "rimraf ~/Library/Application\\ Support/better-day/app.db* && rimraf ./node_modules/.dev && echo 'Database reset, run pnpm dev'"
   },
   "dependencies": {
     "@base-ui/react": "^1.2.0",

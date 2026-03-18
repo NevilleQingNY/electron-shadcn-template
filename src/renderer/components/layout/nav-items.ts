@@ -1,4 +1,4 @@
-import { Home, Settings } from 'lucide-react'
+import { Sun, Calendar, LayoutGrid, ScrollText, Settings } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 
 export interface NavItem {
@@ -8,7 +8,10 @@ export interface NavItem {
 }
 
 export const mainItems: NavItem[] = [
-  { title: 'Home', url: '/home', icon: Home },
+  { title: 'Today', url: '/today', icon: Sun },
+  { title: 'Calendar', url: '/calendar', icon: Calendar },
+  { title: 'Overview', url: '/overview', icon: LayoutGrid },
+  { title: 'Log', url: '/log', icon: ScrollText },
 ]
 
 export const coreItems: NavItem[] = []
